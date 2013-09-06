@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.ServiceBus;
@@ -16,12 +17,12 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
         private readonly SubscriptionContext[] _subscriptions;
         private readonly TopicClient[] _topicClients;
 
-        public object SubscriptionsLock { get; set; }
-        public object TopicClientsLock { get; set; }
+        public object SubscriptionsLock { get; private set; }
+        public object TopicClientsLock { get; private set; }
 
-        public IList<string> TopicNames { get; set; }
-        public Action<int, IEnumerable<BrokeredMessage>> Handler { get; set; }
-        public Action<int, Exception> ErrorHandler { get; set; }
+        public IList<string> TopicNames { get; private set; }
+        public Action<int, IEnumerable<BrokeredMessage>> Handler { get; private set; }
+        public Action<int, Exception> ErrorHandler { get; private set; }
 
         public bool IsDisposed { get; private set; }
 
@@ -52,6 +53,11 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
 
         public Task Publish(int topicIndex, Stream stream)
         {
+            if (IsDisposed)
+            {
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, Resources.Error_CannotPublishClientClosed));
+            }
+
             var message = new BrokeredMessage(stream, ownsStream: true)
             {
                 TimeToLive = _configuration.TimeToLive
@@ -109,9 +115,9 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
 
     public class SubscriptionContext
     {
-        public string TopicPath;
-        public string Name;
-        public MessageReceiver Receiver;
+        public string TopicPath {get; private set;}
+        public string Name { get; private set; }
+        public MessageReceiver Receiver { get; private set; }
 
         public SubscriptionContext(string topicPath, string subName, MessageReceiver receiver)
         {

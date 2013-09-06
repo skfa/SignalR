@@ -258,7 +258,6 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
 
                 Thread.Sleep(RetryDelay);
                 goto receive;
-                // REVIEW: What should we do here?
             }
         }
 
@@ -293,7 +292,7 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
             }
             catch (MessagingEntityNotFoundException)
             {
-                receiverContext.Receiver.CloseAsync();
+                receiverContext.Receiver.CloseAsync().Catch(ex => { receiverContext.OnError(ex.InnerException); });
                 TaskAsyncHelper.Delay(RetryDelay)
                                .Then(() => Retry(() => CreateSubscription(receiverContext.ConnectionContext, receiverContext.TopicIndex)));
                 return false;
